@@ -3,6 +3,7 @@ import threading
 import struct
 import json
 import queue
+import requests
 import customtkinter as ctk
 
 from utils import (
@@ -15,8 +16,8 @@ from utils import (
     fingerprint,
 )
 
-
 PORT = 5000
+REGISTRY_URL = "http://51.6.19.235:6467/servers"
 
 
 def send_packet(sock, data):
@@ -46,11 +47,18 @@ class ChatApp:
         ctk.set_appearance_mode("dark")
 
         self.win = ctk.CTk()
-        self.win.geometry("600x500")
+        self.win.geometry("650x550")
         self.win.title("Turkey Chat")
 
-        self.host_entry = ctk.CTkEntry(self.win, placeholder_text="Connect to Turkey Chat server: ")
-        self.host_entry.pack(pady=10)
+        self.server_list = ctk.CTkTextbox(self.win, height=120)
+        self.server_list.pack(fill="x", padx=10, pady=5)
+        self.server_list.configure(state="disabled")
+
+        self.refresh_btn = ctk.CTkButton(self.win, text="Refresh Servers", command=self.load_servers)
+        self.refresh_btn.pack(pady=5)
+
+        self.host_entry = ctk.CTkEntry(self.win, placeholder_text="Server IP")
+        self.host_entry.pack(pady=5)
 
         self.connect_btn = ctk.CTkButton(self.win, text="Connect", command=self.start_connection)
         self.connect_btn.pack()
@@ -67,13 +75,58 @@ class ChatApp:
 
         self.sock = None
         self.shared_key = None
-
         self.private_key, self.public_key = generate_keypair()
-
         self.queue = queue.Queue()
 
         self.win.after(100, self.process_queue)
+
+        self.load_servers()
         self.win.mainloop()
+
+    def load_servers(self):
+        try:
+            r = requests.get(REGISTRY_URL, timeout=5)
+            data = r.json()
+
+            self.server_list.configure(state="normal")
+            self.server_list.delete("1.0", "end")
+
+            for s in data:
+                line = f"{s['ip']}:{s['port']}"
+                self.server_list.insert("end", line + "\n")
+
+            self.server_list.configure(state="disabled")
+
+        except Exception as e:
+            self.append_chat(f"Server list error: {e}")
+
+    def start_connection(self):
+        host = self.host_entry.get()
+        if not host:
+            return
+
+        threading.Thread(target=self.connect_worker, args=(host,), daemon=True).start()
+
+    def connect_worker(self, host):
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((host, PORT))
+
+            send_packet(self.sock, serialize_public_key(self.public_key))
+
+            peer_key = recv_packet(self.sock)
+            peer_pub = deserialize_public_key(peer_key)
+
+            self.verify_peer(peer_pub)
+
+            self.shared_key = derive_shared_key(self.private_key, peer_pub)
+
+            self.queue.put("Secure channel established")
+
+            threading.Thread(target=self.receive_loop, daemon=True).start()
+
+        except Exception as e:
+            self.queue.put(f"Connection failed: {e}")
 
     def verify_peer(self, peer_pub):
         fp = fingerprint(peer_pub)
@@ -87,43 +140,11 @@ class ChatApp:
         if known is None:
             with open("known_keys.txt", "w") as f:
                 f.write(fp)
-            self.append_chat("First connection trusted")
+            self.queue.put("First connection trusted")
         elif known != fp:
-            self.append_chat("WARNING: Peer key changed! Possible MITM attack!")
+            self.queue.put("WARNING: Key changed (possible MITM)")
         else:
-            self.append_chat("Peer verified")
-
-    def start_connection(self):
-        host = self.host_entry.get()
-        if not host:
-            return
-
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((host, PORT))
-
-        send_packet(self.sock, serialize_public_key(self.public_key))
-
-        peer_key = recv_packet(self.sock)
-        peer_pub = deserialize_public_key(peer_key)
-
-        self.verify_peer(peer_pub)
-
-        self.shared_key = derive_shared_key(self.private_key, peer_pub)
-
-        self.append_chat("Secure channel established")
-
-        threading.Thread(target=self.receive_loop, daemon=True).start()
-
-    def append_chat(self, text):
-        self.chat_box.configure(state="normal")
-        self.chat_box.insert("end", text + "\n")
-        self.chat_box.configure(state="disabled")
-        self.chat_box.see("end")
-
-    def process_queue(self):
-        while not self.queue.empty():
-            self.append_chat(self.queue.get())
-        self.win.after(100, self.process_queue)
+            self.queue.put("Peer verified")
 
     def send(self):
         if not self.shared_key:
@@ -152,10 +173,21 @@ class ChatApp:
                 obj = json.loads(msg)
 
                 if obj["type"] == "msg":
-                    self.queue.put(f"Anonymous: {obj['text']}")
+                    self.queue.put(f"Friend: {obj['text']}")
 
             except Exception:
                 break
+
+    def append_chat(self, text):
+        self.chat_box.configure(state="normal")
+        self.chat_box.insert("end", text + "\n")
+        self.chat_box.configure(state="disabled")
+        self.chat_box.see("end")
+
+    def process_queue(self):
+        while not self.queue.empty():
+            self.append_chat(self.queue.get())
+        self.win.after(100, self.process_queue)
 
 
 ChatApp()
