@@ -10,3 +10,20 @@ The official server is hosted at turkey112.online
 
 
 When you click connect, the server will wait for another client. while it is waiting, your client may become seemingly unresponsive, usually it has not crashed, it is just waiting for a second client.
+
+
+# Known vulnerabilities
+
+Unauthenticated Diffie-Hellman allows someone to perform an MITM attack
+
+Weak TOFU
+
+No racheting
+
+No rekeying
+
+No DoS protection/Rate limiting
+
+Potential resource leaks
+
+Metadata leakage
