@@ -2,6 +2,7 @@ TurkeyChat, an end-to-end encrypted chat app using ChaCha20Poly1305.
 
 This currently only supports 2 people at a time.
 
+V2 has MITM protection
 
 To run a server, run server.py or server.exe but make sure you have port 5000 free and accessable.
 
