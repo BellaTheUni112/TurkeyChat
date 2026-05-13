@@ -4,7 +4,7 @@ This currently only supports 2 people at a time.
 
 V2 has MITM protection
 
-To run a server, run server.py or server.exe but make sure you have port 5000 free and accessable.
+To run a server, run serverupnp.py (for everything to be automatic and go on the server registry) or server.py or server.exe but make sure you have port 5000 free and accessable.
 
 The official server is hosted at turkey112.online
 
