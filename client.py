@@ -152,7 +152,7 @@ class ChatApp:
                 obj = json.loads(msg)
 
                 if obj["type"] == "msg":
-                    self.queue.put(f"Friend: {obj['text']}")
+                    self.queue.put(f"Anonymous: {obj['text']}")
 
             except Exception:
                 break
