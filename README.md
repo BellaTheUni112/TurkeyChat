@@ -1,4 +1,4 @@
-TurkeyChat, an end-to-end encrypted chat app.
+TurkeyChat, an end-to-end encrypted chat app using ChaCha20Poly1305.
 
 This currently only supports 2 people at a time.
 
