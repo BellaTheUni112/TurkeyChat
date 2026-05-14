@@ -14,7 +14,7 @@ When you click connect, the server will wait for another client. while it is wai
 
 # Known vulnerabilities
 
-Unauthenticated Diffie-Hellman allows someone to perform an MITM attack
+Unauthenticated Diffie-Hellman allows someone to perform an MITM attack on the first connection window
 
 Weak TOFU
 
