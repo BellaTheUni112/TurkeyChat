@@ -17,7 +17,7 @@ from utils import (
 )
 
 PORT = 5000
-REGISTRY_URL = "http://51.6.19.235:6467/servers"
+REGISTRY_URL = "http://turkey112.online:6467/servers"
 
 
 def send_packet(sock, data):
